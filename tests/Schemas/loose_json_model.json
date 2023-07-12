@@ -1,0 +1,6 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Loose Json Model",
+    "description": "Json Model that needs to validate for unit tests, but has no strict requirements",
+    "type": "object"
+}
