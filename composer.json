@@ -2,8 +2,11 @@
     "name": "carsdotcom/laravel-json-model",
     "type": "library",
     "description": "Laravel models backed by JSON data",
-    "keywords": ["library", "laravel"],
-    "license": "UNLICENSED",
+    "keywords": [
+        "library",
+        "laravel"
+    ],
+    "license": "MIT",
     "require": {
         "carsdotcom/laravel-json-schema": "^v1.0.1",
         "ext-json": "*",
