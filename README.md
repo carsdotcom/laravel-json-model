@@ -1,6 +1,6 @@
 # Laravel Json Model
 
-We really love Laravel as an ORM. But we have a part of our application that is not backed by a document store,
+We really love Laravel as an ORM. But we have a part of our application that persists to a document store,
 not a relational database. Json Models let us use the best parts of the Eloquent Models, 
 but instead of being backed by a row in a table, they're always serialized to JSON. (Which can include 
 being serialized to an attribute on a traditional Laravel Model!)
