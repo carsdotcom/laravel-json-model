@@ -398,6 +398,39 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     }
 
     /**
+     * Given a set of changes that *might* contain some invalid data,
+     * take the good parts and throw out the rest.
+     * Assumes that $this was valid before the changes, and that each key could be an independent change,
+     * so if you have validation states where two attributes have to agree, choose `update` instead.
+     */
+    public function safeUpdateRecursive(array $attributes, bool $isRootOfChange = true): void
+    {
+        foreach ($attributes as $key => $updatedAttribute) {
+            $wasSet = isset($this->{$key});
+            $previousValue = $this->{$key}; // __get will fill null even if it wasn't null
+
+            if ($this->{$key} instanceof JsonModel) {
+                $this->{$key}->safeUpdateRecursive($updatedAttribute, false);
+            } else {
+                $this->{$key} = $updatedAttribute;
+            }
+
+            try {
+                $this->validateOrThrow();
+            } catch (JsonSchemaValidationException) {
+                if ($wasSet) {
+                    $this->{$key} = $previousValue;
+                } else {
+                    unset($this->{$key});
+                }
+            }
+        }
+        if ($isRootOfChange) {
+            $this->save();
+        }
+    }
+
+    /**
      * Save the data over the link:
      *
      * Fire the saving event. If a saving event handler returns false, return false without saving

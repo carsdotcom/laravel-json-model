@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Address",
+    "type": "object",
+    "properties": {
+        "country": {
+            "enum": ["US", "CA"]
+        },
+        "street": {
+            "type": "string"
+        },
+        "city": {
+            "type": "string"
+        }
+    }
+}

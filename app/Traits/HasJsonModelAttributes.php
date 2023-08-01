@@ -63,7 +63,7 @@ trait HasJsonModelAttributes
         if (array_key_exists($key, $this->jsonModelAttributeCache)) {
             return $this->jsonModelAttributeCache[$key];
         }
-        list($type, $attribute, $attribute_key, $is_collection, $primary_key) = $config;
+        [$type, $attribute, $attribute_key, $is_collection, $primary_key] = $config;
         if ($is_collection) {
             /** @var CollectionOfJsonModels $collection */
             $collection = (new $type())->newCollection();
@@ -115,7 +115,7 @@ trait HasJsonModelAttributes
             return;
         }
 
-        list($type, $attribute, $attribute_key, $is_collection, $primary_key) = $config;
+        [$type, $attribute, $attribute_key, $is_collection, $primary_key] = $config;
         if (!$is_collection) {
             //Setting it to raw array data, build up an object
             if (is_array($value)) {
@@ -135,7 +135,8 @@ trait HasJsonModelAttributes
             $this->jsonModelAttributeCache[$key] = $value;
         } else {
             /** @var CollectionOfJsonModels $collection */
-            $collection = (new $type())->newCollection()
+            $collection = (new $type())
+                ->newCollection()
                 ->setPrimaryKey($primary_key)
                 ->link($this, $attribute, $attribute_key);
             if (is_iterable($value)) {
@@ -167,7 +168,7 @@ trait HasJsonModelAttributes
             return;
         }
         Arr::forget($this->jsonModelAttributeCache, $key);
-        list($type, $attribute, $attribute_key, $is_collection, $primary_key) = $config;
+        [$type, $attribute, $attribute_key, $is_collection, $primary_key] = $config;
         if ($attribute_key) {
             $wholeAttribute = $this->{$attribute};
             unset($wholeAttribute[$attribute_key]);
@@ -190,7 +191,7 @@ trait HasJsonModelAttributes
             // Our conception of ourself could be null or even stdClass.
             // convert to array only if absolutely necessary
             if (!is_array($array)) {
-                $array = (array)$array;
+                $array = (array) $array;
             }
             foreach ($this->jsonModelAttributeCache as $key => $value) {
                 // None of our models are safe to encode to empty object, because they tend to get flattened back to []
@@ -203,7 +204,7 @@ trait HasJsonModelAttributes
 
             // After removing empty properties, I have no properties, I am empty
             if (!$array) {
-                return (object)[];
+                return (object) [];
             }
         }
 
@@ -232,11 +233,11 @@ trait HasJsonModelAttributes
     {
         if (!property_exists($this, 'jsonModelAttributes')) {
             throw new DomainException(
-                static::class . " must define a property jsonModelAttributes to use HasJsonModelAttributes"
+                static::class . ' must define a property jsonModelAttributes to use HasJsonModelAttributes',
             );
         }
         if (!is_array($this->jsonModelAttributes)) {
-            throw new DomainException(static::class . " must define an array for property jsonModelAttributes");
+            throw new DomainException(static::class . ' must define an array for property jsonModelAttributes');
         }
     }
 
@@ -253,7 +254,7 @@ trait HasJsonModelAttributes
         if (array_key_exists($key, $this->jsonModelAttributes)) {
             $tuple = $this->jsonModelAttributes[$key];
             if (!is_array($tuple) || count($tuple) < 2 || count($tuple) > 5) {
-                throw new DomainException("Unusable jsonModelAttributes in " . static::class . " for $key");
+                throw new DomainException('Unusable jsonModelAttributes in ' . static::class . " for $key");
             }
             // Create a consistent four-item config but let definer be lazy
             if (!isset($tuple[2])) {
@@ -290,14 +291,10 @@ trait HasJsonModelAttributes
         if (!$config) {
             throw new InvalidArgumentException("{$key} must be a Json Model Attribute");
         }
-        if (!isset($this->jsonModelAttributeCache[$key])) {
-            // Not even hydrated, can't possibly be dirty
-            return false;
-        }
 
-        $accordingToChild = json_encode($this->jsonModelAttributeCache[$key]);
+        $accordingToChild = json_encode($this->jsonModelAttributeCache[$key] ?? null);
 
-        list($type, $attribute, $attribute_key, $is_collection, $primary_key) = $config;
+        [$type, $attribute, $attribute_key, $is_collection, $primary_key] = $config;
 
         if ($attribute_key) {
             $accordingToParent = json_encode($this->original[$attribute][$attribute_key] ?? null);
@@ -356,7 +353,6 @@ trait HasJsonModelAttributes
      */
     public function isEmpty(): bool
     {
-        return collect($this->jsonModelAttributeCache)->every->isEmpty()
-            && parent::isEmpty();
+        return collect($this->jsonModelAttributeCache)->every->isEmpty() && parent::isEmpty();
     }
 }

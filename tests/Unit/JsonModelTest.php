@@ -26,6 +26,7 @@ use Tests\BaseTestCase;
 use Tests\MockClasses\ConcreteJsonModel;
 use Tests\MockClasses\EventedJsonModel;
 use Tests\MockClasses\Invokeable;
+use Tests\Mocks\Models\Person;
 
 /**
  * Class JsonModelTest
@@ -47,9 +48,9 @@ class JsonModelTest extends BaseTestCase
         $app['config']->set('json-schema.local_base_prefix', dirname(__FILE__) . '/../../tests/Schemas');
         $app['config']->set('json-schema.local_base_prefix_tests', dirname(__FILE__) . '/../../tests/Schemas');
         $app['config']->set('database.connections.testbench', [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]);
     }
 
@@ -353,10 +354,7 @@ class JsonModelTest extends BaseTestCase
             ->andReturn(true);
 
         $jsonmodel->updateRecursive(['a' => ['aa' => 33]]);
-        self::assertCanonicallySame(
-            ['a' => ['aa' => 33, 'bb' => 22], 'b' => 2],
-            $model->data
-        );
+        self::assertCanonicallySame(['a' => ['aa' => 33, 'bb' => 22], 'b' => 2], $model->data);
     }
 
     public function testRecursiveUpdateSavesEachChildGroupOnce(): void
@@ -410,7 +408,9 @@ class JsonModelTest extends BaseTestCase
 
     public function testValidateWithUriSchema(): void
     {
-        $jsonModel = new class (['vin' => '11111111111111111', 'make' => 'DeLorean', 'model' => 'DMC-12']) extends JsonModel {
+        $jsonModel = new class (['vin' => '11111111111111111', 'make' => 'DeLorean', 'model' => 'DMC-12']) extends
+            JsonModel
+        {
             public const SCHEMA = 'https://schemas.dealerinspire.com/online-shopper/vehicle.json';
         };
         self::assertTrue($jsonModel->validateOrThrow());
@@ -584,8 +584,6 @@ class JsonModelTest extends BaseTestCase
 
         $jsonModel->b = $jsonModel;
     }
-
-
 
     public function testCantGetLinkedDataWhileNotLinked(): void
     {
@@ -812,7 +810,7 @@ class JsonModelTest extends BaseTestCase
 
         $model = mock(Model::class)->makePartial();
         $jsonModel = new class ($model, 'data') extends EventedJsonModel {
-            const SCHEMA = "person.json";
+            const SCHEMA = 'person.json';
         };
         $jsonModel->mobile_phone = '8885551111';
 
@@ -825,6 +823,31 @@ class JsonModelTest extends BaseTestCase
         self::assertFalse(isset($jsonModel->email)); // attribute is invalid, revert to unset
         self::assertSame('8885551111', $jsonModel->mobile_phone); // attribute is invalid, revert to previous value
         self::assertSame('Jeremy', $jsonModel->first_name);
+    }
+
+    public function testSafeUpdateRecursive(): void
+    {
+        $mixedChanges = [
+            'email' => 'kaboom',
+            'first_name' => 'Jeremy',
+            'address' => [
+                'country' => 'Robonia',
+            ],
+        ];
+
+        $model = mock(Model::class)->makePartial();
+        $jsonModel = new Person($model, 'data');
+        $jsonModel->address->country = 'CA';
+
+        $model
+            ->shouldReceive('save')
+            ->once()
+            ->andReturn(true);
+
+        $jsonModel->safeUpdateRecursive($mixedChanges);
+        self::assertFalse(isset($jsonModel->email), 'attribute is invalid, should revert to unset');
+        self::assertSame('CA', $jsonModel->address->country, 'attribute is invalid, revert to previous value');
+        self::assertSame('Jeremy', $jsonModel->first_name, 'attribute is valid, set');
     }
 }
 /**
