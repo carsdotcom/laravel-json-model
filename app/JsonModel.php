@@ -21,6 +21,7 @@ use ArrayAccess;
 use Carsdotcom\JsonSchemaValidation\Exceptions\JsonSchemaValidationException;
 use Carsdotcom\JsonSchemaValidation\Helpers\FriendlyClassName;
 use Carsdotcom\JsonSchemaValidation\Traits\ValidatesWithJsonSchema;
+use Carsdotcom\LaravelJsonModel\Casts\ShouldUnset;
 use Carsdotcom\LaravelJsonModel\Contracts\CanCascadeEvents;
 use Carsdotcom\JsonSchemaValidation\Contracts\CanValidate;
 use Carsdotcom\LaravelJsonModel\Helpers\ClassUsesTrait;
@@ -692,5 +693,25 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     public static function preventsAccessingMissingAttributes()
     {
         return static::$modelsShouldPreventAccessingMissingAttributes;
+    }
+
+    /**
+     * Extends setAttribute to cooperate with casts that implement ShouldUnset.
+     * If the cast wishes, we'll *remove* the attribute from the Json representation.
+     * This lets us implement things like PATCH {"zip":null} to mean "remove ZIP, return to default behavior"
+     */
+    use HasAttributes {
+        setAttribute as protected eloquentSetAttribute;
+    }
+
+    public function setAttribute($key, $value) {
+        $castType = $this->hasCast($key) ? $this->getCastType($key) : null;
+        if (is_a($castType, ShouldUnset::class, true) && $castType::shouldUnset($value)) {
+                unset($this->attributes[$key]);
+                return $this;
+        }
+
+        $this->eloquentSetAttribute($key, $value);
+        return $this;
     }
 }
