@@ -11,7 +11,7 @@
         "carsdotcom/laravel-json-schema": "^v1.0.1 || ^v2",
         "ext-json": "*",
         "php": "^8.1",
-        "laravel/framework": "^9.19 || ^10.0"
+        "laravel/framework": "^9.19 || ^10.0 || ^11.0"
     },
     "require-dev": {
         "brianium/paratest": "^6.6",
