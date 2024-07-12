@@ -8,19 +8,18 @@
     ],
     "license": "MIT",
     "require": {
-        "carsdotcom/laravel-json-schema": "^v1.0.1 || ^v2 || dev-bbene-laravel-11",
+        "carsdotcom/laravel-json-schema": "^v1.0.1 || ^v2 || ^2.1",
         "ext-json": "*",
         "php": "^8.1",
         "laravel/framework": "^9.19 || ^10.0 || ^11.0"
     },
     "require-dev": {
-        "brianium/paratest": "^6.6",
         "fakerphp/faker": "^1.9.1",
         "mockery/mockery": "^1.4.4",
-        "nunomaduro/collision": "^6.1",
-        "orchestra/testbench": "^7.11",
+        "nunomaduro/collision": "^6.1|7.*|8.*",
+        "orchestra/testbench": "7.*|8.*|9.*",
+        "phpunit/phpunit": "~8.0|~9.0|^10.5",
         "phpstan/phpstan": "^1.8",
-        "phpunit/phpunit": "^9.5.10",
         "squizlabs/php_codesniffer": "^3.7"
     },
     "autoload": {
@@ -44,6 +43,7 @@
     "scripts": {
         "post-autoload-dump": [
             "@php ./vendor/bin/testbench package:discover --ansi"
-        ]
+        ],
+        "test": "vendor/bin/phpunit"
     }
 }
