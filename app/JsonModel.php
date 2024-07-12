@@ -30,6 +30,7 @@ use Illuminate\Contracts\Support\Jsonable;
 use Illuminate\Database\Eloquent\Concerns\HasAttributes;
 use Illuminate\Database\Eloquent\Concerns\HasEvents;
 use Illuminate\Database\Eloquent\Concerns\HasRelationships;
+use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HidesAttributes;
 use Illuminate\Database\Eloquent\JsonEncodingException;
 use Illuminate\Database\Eloquent\Model;
@@ -43,6 +44,7 @@ use JsonSerializable;
 abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, CanValidate, CanCascadeEvents
 {
     use HasAttributes;
+    use HasTimestamps;
     use HasEvents;
     use HasLinkedData;
     use HasRelationships;
@@ -52,17 +54,64 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     /** @var string|null   JsonSchema used to validate this model before saving.  URI or Json string literal */
     public const SCHEMA = null;
 
+    /**
+     * The name of the "created at" column.
+     *
+     * @var string|null
+     */
+    const CREATED_AT = 'created_at';
+
+    /**
+     * The name of the "updated at" column.
+     *
+     * @var string|null
+     */
+    const UPDATED_AT = 'updated_at';
+
     /** @var bool  Indicates if the model exists. */
     public $exists = false;
 
     /**
-     * Required but not implemented by HasAttributes in several places that define casting behavior
-     * @return array
+     * Indicates whether lazy loading should be restricted on all models.
+     *
+     * @var bool
      */
-    public function getDates(): array
-    {
-        return $this->dates;
-    }
+    protected static $modelsShouldPreventLazyLoading = false;
+
+    /**
+     * The callback that is responsible for handling lazy loading violations.
+     *
+     * @var callable|null
+     */
+    protected static $lazyLoadingViolationCallback;
+
+    /**
+     * Indicates if an exception should be thrown instead of silently discarding non-fillable attributes.
+     *
+     * @var bool
+     */
+    protected static $modelsShouldPreventSilentlyDiscardingAttributes = false;
+
+    /**
+     * The callback that is responsible for handling discarded attribute violations.
+     *
+     * @var callable|null
+     */
+    protected static $discardedAttributeViolationCallback;
+
+    /**
+     * Indicates if an exception should be thrown when trying to access a missing attribute on a retrieved model.
+     *
+     * @var bool
+     */
+    protected static $modelsShouldPreventAccessingMissingAttributes = false;
+
+    /**
+     * The callback that is responsible for handling missing attribute violations.
+     *
+     * @var callable|null
+     */
+    protected static $missingAttributeViolationCallback;
 
     /**
      * required by HasAttributes::getCasts but can not be true for JsonModel
@@ -620,5 +669,35 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     public function hasJsonModelAttributes(): bool
     {
         return (new ClassUsesTrait())(class: $this, trait: HasJsonModelAttributes::class);
+    }
+
+    /**
+     * Determine if lazy loading is disabled.
+     *
+     * @return bool
+     */
+    public static function preventsLazyLoading()
+    {
+        return static::$modelsShouldPreventLazyLoading;
+    }
+
+    /**
+     * Determine if discarding guarded attribute fills is disabled.
+     *
+     * @return bool
+     */
+    public static function preventsSilentlyDiscardingAttributes()
+    {
+        return static::$modelsShouldPreventSilentlyDiscardingAttributes;
+    }
+
+    /**
+     * Determine if accessing missing attributes is disabled.
+     *
+     * @return bool
+     */
+    public static function preventsAccessingMissingAttributes()
+    {
+        return static::$modelsShouldPreventAccessingMissingAttributes;
     }
 }
