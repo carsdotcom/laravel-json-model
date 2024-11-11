@@ -386,7 +386,7 @@ class JsonModelTest extends BaseTestCase
     {
         [$model, $jsonmodel] = $this->mockLinkedValidatedJsonModel();
         SchemaValidator::shouldReceive('validateOrThrow')
-            ->once()
+            ->atLeast()->once()
             ->with(
                 $jsonmodel,
                 $jsonmodel::SCHEMA,
@@ -808,16 +808,11 @@ class JsonModelTest extends BaseTestCase
             'first_name' => 'Jeremy',
         ];
 
-        $model = mock(Model::class)->makePartial();
+        $model = $this->makeMockModel();
         $jsonModel = new class ($model, 'data') extends EventedJsonModel {
             const SCHEMA = 'person.json';
         };
         $jsonModel->mobile_phone = '8885551111';
-
-        $model
-            ->shouldReceive('save')
-            ->once()
-            ->andReturn(true);
 
         $jsonModel->safeUpdate($mixedChanges);
         self::assertFalse(isset($jsonModel->email)); // attribute is invalid, revert to unset
@@ -835,21 +830,59 @@ class JsonModelTest extends BaseTestCase
             ],
         ];
 
-        $model = mock(Model::class)->makePartial();
+        $model = $this->makeMockModel();
         $jsonModel = new Person($model, 'data');
         $jsonModel->address->country = 'CA';
-
-        $model
-            ->shouldReceive('save')
-            ->once()
-            ->andReturn(true);
 
         $jsonModel->safeUpdateRecursive($mixedChanges);
         self::assertFalse(isset($jsonModel->email), 'attribute is invalid, should revert to unset');
         self::assertSame('CA', $jsonModel->address->country, 'attribute is invalid, revert to previous value');
         self::assertSame('Jeremy', $jsonModel->first_name, 'attribute is valid, set');
     }
+
+    public function makeMockModel(): Model
+    {
+        $model = mock(Model::class)->makePartial();
+        $model
+            ->shouldReceive('save')
+            ->andReturn(true);
+        return $model;
+    }
+
+    public function testSafeUpdateRecursiveIncludesSavingHandlers(): void
+    {
+        $model = $this->makeMockModel();
+        $jsonModel = new CustomSavingHandler($model, 'data');
+        $caughtExceptions = [];
+        $jsonModel->safeUpdateRecursive(['shirt' => 'red', 'bestCaptain' => 'Solo'], caughtExceptions: $caughtExceptions);
+        self::assertCanonicallySame(['shirt' => 'red'], $jsonModel);
+        self::assertCanonicallySame(["Sorry, Solo is not a valid choice for Best Star Trek Captain."], array_map(fn ($e) => $e->getMessage(), $caughtExceptions));
+
+        // can mix schema and custom handler problems
+        $caughtExceptions = [];
+        $jsonModel->safeUpdateRecursive(['shirt' => 'orange', 'bestCaptain' => 'Starbuck', 'tribbles' => 14], caughtExceptions: $caughtExceptions);
+        self::assertCanonicallySame([
+            'shirt' => 'red', // orange is invalid in the schema, reverted
+            'tribbles' => 14
+        ], $jsonModel);
+        self::assertCanonicallySame([
+            "The properties must match schema: shirt\nThe data should match one item from enum",
+            "Sorry, Starbuck is not a valid choice for Best Star Trek Captain."
+        ], array_map(fn ($e) => ($e instanceof JsonSchemaValidationException) ? $e->errorsAsMultilineString() : $e->getMessage(), $caughtExceptions));
+
+        // False saving handler is also a problem.
+        $caughtExceptions = [];
+        $jsonModel->safeUpdateRecursive(['tribbles' => 101], caughtExceptions: $caughtExceptions);
+        self::assertCanonicallySame([
+            'shirt' => 'red',
+            'tribbles' => 14, // excess tribbles caused saving to return false, that gets reverted but no message
+        ], $jsonModel);
+        self::assertCanonicallySame([
+            "A saving handler on Custom Saving Handler returned false but provided no reason."
+        ], array_map(fn ($e) => ($e instanceof JsonSchemaValidationException) ? $e->errorsAsMultilineString() : $e->getMessage(), $caughtExceptions));
+    }
 }
+
 /**
  * These are classes and models needed to test inheritance, etc.
  */
@@ -861,6 +894,21 @@ class UpstreamModel extends JsonModel
     protected $jsonModelAttributes = [
         'child' => [DownstreamModel::class, 'child'],
     ];
+}
+
+class CustomSavingHandler extends JsonModel
+{
+    public const SCHEMA = '{"properties":{"shirt":{"enum":["red", "gold"]}}}';
+    protected static function boot()
+    {
+        parent::boot();
+        static::saving(function (self $model) {
+            if ($model->isDirty('bestCaptain') && $model->bestCaptain !== 'Saru' ) {
+                throw new DomainException("Sorry, {$model->bestCaptain} is not a valid choice for Best Star Trek Captain.");
+            }
+            return $model->tribbles < 99;
+        });
+    }
 }
 
 class DownstreamModel extends JsonModel
