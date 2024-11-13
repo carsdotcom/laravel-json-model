@@ -19,6 +19,7 @@ namespace Carsdotcom\LaravelJsonModel;
 
 use ArrayAccess;
 use Carsdotcom\JsonSchemaValidation\Exceptions\JsonSchemaValidationException;
+use Carsdotcom\JsonSchemaValidation\Helpers\FriendlyClassName;
 use Carsdotcom\JsonSchemaValidation\Traits\ValidatesWithJsonSchema;
 use Carsdotcom\LaravelJsonModel\Contracts\CanCascadeEvents;
 use Carsdotcom\JsonSchemaValidation\Contracts\CanValidate;
@@ -420,30 +421,12 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     }
 
     /**
-     * Given a set of changes that *might* contain some invalid data,
-     * take the good parts and throw out the rest.
-     * Assumes that $this was valid before the changes, and that each key could be an independent change,
-     * so if you have validation states where two attributes have to agree, choose `update` instead.
-     * @param array $attributes
-     * @return void
+     * @deprecated It is always safer to use safeUpdateRecursive, so this non-recursive variant is deprecated
+     * "If I am only for myself, what am I?"
      */
     public function safeUpdate(array $attributes): void
     {
-        foreach ($attributes as $key => $updatedAttribute) {
-            $wasSet = isset($this->{$key});
-            $previousValue = $this->{$key}; // __get will fill null even if it wasn't null
-            $this->{$key} = $updatedAttribute;
-            try {
-                $this->validateOrThrow();
-            } catch (JsonSchemaValidationException) {
-                if ($wasSet) {
-                    $this->{$key} = $previousValue;
-                } else {
-                    unset($this->{$key});
-                }
-            }
-        }
-        $this->save();
+        $this->safeUpdateRecursive($attributes);
     }
 
     /**
@@ -451,22 +434,30 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
      * take the good parts and throw out the rest.
      * Assumes that $this was valid before the changes, and that each key could be an independent change,
      * so if you have validation states where two attributes have to agree, choose `update` instead.
+     * @return bool was save successful?
      */
-    public function safeUpdateRecursive(array $attributes, bool $isRootOfChange = true): void
+    public function safeUpdateRecursive(array $attributes, bool $isRootOfChange = true, array &$caughtExceptions = null): bool
     {
+        if ($caughtExceptions === null) {
+            $caughtExceptions = [];
+        }
         foreach ($attributes as $key => $updatedAttribute) {
             $wasSet = isset($this->{$key});
             $previousValue = $this->{$key}; // __get will fill null even if it wasn't null
 
             if ($this->{$key} instanceof JsonModel) {
-                $this->{$key}->safeUpdateRecursive($updatedAttribute, false);
+                $this->{$key}->safeUpdateRecursive($updatedAttribute, false, $caughtExceptions);
             } else {
                 $this->{$key} = $updatedAttribute;
             }
 
             try {
-                $this->validateOrThrow();
-            } catch (JsonSchemaValidationException) {
+                $canSave = $this->preSave();
+                if (!$canSave) {
+                    throw new \DomainException("A saving handler on " . (new FriendlyClassName())($this) . " returned false but provided no reason.");
+                }
+            } catch (\Throwable $e) {
+                $caughtExceptions[] = $e;
                 if ($wasSet) {
                     $this->{$key} = $previousValue;
                 } else {
@@ -475,8 +466,9 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
             }
         }
         if ($isRootOfChange) {
-            $this->save();
+            return $this->save();
         }
+        return true;
     }
 
     /**
@@ -587,6 +579,7 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
         if ($this->fireModelEvent('saving') === false) {
             return false;
         }
+        $this->validateOrThrow(); // We validate after the handlers, because the handlers could clean up data, validate never does
         return $this->cascadePreSave();
     }
 
