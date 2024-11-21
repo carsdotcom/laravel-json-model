@@ -73,7 +73,10 @@ class CollectionOfJsonModels extends Collection implements CanValidate
      */
     public function fresh(): self
     {
-        return $this->fill($this->getLinkedData() ?: []);
+        return $this
+            ->fill($this->getLinkedData() ?: [])
+            // We loaded them from linked data, they are not dirty
+            ->each(fn ($model) => $model->syncOriginal());
     }
 
     /**

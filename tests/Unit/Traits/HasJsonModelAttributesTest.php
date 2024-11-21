@@ -33,6 +33,7 @@ class HasJsonModelAttributesTest extends BaseTestCase
         };
         self::assertInstanceOf(ConcreteJsonModel::class, $model->jsonModel);
         self::assertSame(1, $model->jsonModel->a);
+        self::assertFalse($model->jsonModel->isDirty(), "Loaded attributes are not dirty");
     }
 
     public function testWholeAttributeMissingIsEmptyObject()
@@ -406,6 +407,7 @@ class HasJsonModelAttributesTest extends BaseTestCase
         self::assertCount(1, $model->jsons);
         self::assertInstanceOf(ConcreteJsonModel::class, $model->jsons->first());
         self::assertSame(1, $model->jsons->first()->id);
+        self::assertFalse($model->jsons->first()->isDirty(), "Loaded models in a collection-attribute are not dirty");
     }
 
     public function testAttributeCanBeTestedWithIsset()

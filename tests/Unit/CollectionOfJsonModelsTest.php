@@ -378,6 +378,7 @@ class CollectionOfJsonModelsTest extends BaseTestCase
             ->fresh();
         self::assertCount(1, $collection);
         self::assertTrue($collection[0]->exists);
+        self::assertFalse($collection[0]->isDirty());
     }
 
     public function testSaveCollectionSkipsCreatingListenerForExistingChildren()
