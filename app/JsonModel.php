@@ -445,13 +445,13 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
             $wasSet = isset($this->{$key});
             $previousValue = $this->{$key}; // __get will fill null even if it wasn't null
 
-            if ($this->{$key} instanceof JsonModel) {
-                $this->{$key}->safeUpdateRecursive($updatedAttribute, false, $caughtExceptions);
-            } else {
-                $this->{$key} = $updatedAttribute;
-            }
-
             try {
+                if ($this->{$key} instanceof JsonModel) {
+                    $this->{$key}->safeUpdateRecursive($updatedAttribute, false, $caughtExceptions);
+                } else {
+                    $this->{$key} = $updatedAttribute;
+                }
+
                 $canSave = $this->preSave();
                 if (!$canSave) {
                     throw new \DomainException("A saving handler on " . (new FriendlyClassName())($this) . " returned false but provided no reason.");
