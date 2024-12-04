@@ -881,6 +881,28 @@ class JsonModelTest extends BaseTestCase
             "A saving handler on Custom Saving Handler returned false but provided no reason."
         ], array_map(fn ($e) => ($e instanceof JsonSchemaValidationException) ? $e->errorsAsMultilineString() : $e->getMessage(), $caughtExceptions));
     }
+
+    public function testSafeUpdateRecursiveIncludesAttributeMutators(): void
+    {
+        $model = $this->makeMockModel();
+        $jsonModel = new CustomAttributeSetter($model, 'data');
+        $caughtExceptions = [];
+        $jsonModel->safeUpdateRecursive(['shirt' => 'red', 'bestCaptain' => 'Solo'], caughtExceptions: $caughtExceptions);
+        self::assertCanonicallySame(['shirt' => 'red'], $jsonModel);
+        self::assertCanonicallySame(["Sorry, Solo is not a valid choice for Best Star Trek Captain."], array_map(fn ($e) => $e->getMessage(), $caughtExceptions));
+
+        // can mix schema and attribute mutator problems
+        $caughtExceptions = [];
+        $jsonModel->safeUpdateRecursive(['shirt' => 'orange', 'bestCaptain' => 'Starbuck', 'tribbles' => 14], caughtExceptions: $caughtExceptions);
+        self::assertCanonicallySame([
+            'shirt' => 'red', // orange is invalid in the schema, reverted
+            'tribbles' => 14
+        ], $jsonModel);
+        self::assertCanonicallySame([
+            "The properties must match schema: shirt\nThe data should match one item from enum",
+            "Sorry, Starbuck is not a valid choice for Best Star Trek Captain."
+        ], array_map(fn ($e) => ($e instanceof JsonSchemaValidationException) ? $e->errorsAsMultilineString() : $e->getMessage(), $caughtExceptions));
+    }
 }
 
 /**
@@ -910,6 +932,20 @@ class CustomSavingHandler extends JsonModel
         });
     }
 }
+
+class CustomAttributeSetter extends JsonModel
+{
+    public const SCHEMA = '{"properties":{"shirt":{"enum":["red", "gold"]}}}';
+    public function setBestCaptainAttribute($value): void
+    {
+        if($value === 'Saru' ) {
+            $this->attributes['bestCaptain'] = $value;
+        } else {
+            throw new DomainException("Sorry, {$value} is not a valid choice for Best Star Trek Captain.");
+        }
+    }
+}
+
 
 class DownstreamModel extends JsonModel
 {
