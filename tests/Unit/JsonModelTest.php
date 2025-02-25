@@ -9,6 +9,9 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use Carsdotcom\JsonSchemaValidation\Exceptions\JsonSchemaValidationException;
+use Carsdotcom\LaravelJsonModel\Casts\CastFloatOrUnset;
+use Carsdotcom\LaravelJsonModel\Casts\CastNonEmptyStringOrUnset;
+use Carsdotcom\LaravelJsonModel\Casts\CastStringOrUnset;
 use Carsdotcom\LaravelJsonModel\CollectionOfJsonModels;
 use Carsdotcom\JsonSchemaValidation\SchemaValidator as SchemaValidator;
 use Carsdotcom\LaravelJsonModel\JsonModel;
@@ -902,6 +905,79 @@ class JsonModelTest extends BaseTestCase
             "The properties must match schema: shirt\nThe data should match one item from enum",
             "Sorry, Starbuck is not a valid choice for Best Star Trek Captain."
         ], array_map(fn ($e) => ($e instanceof JsonSchemaValidationException) ? $e->errorsAsMultilineString() : $e->getMessage(), $caughtExceptions));
+    }
+
+    public function testCastFloatOrUnset(): void
+    {
+        $jsonModel = new class extends JsonModel{
+            protected $casts = [
+                'fou' => CastFloatOrUnset::class
+            ];
+        };
+
+        self::assertFalse(isset($jsonModel->fou), "Initializes unset");
+        $jsonModel->fou = null;
+        self::assertFalse(isset($jsonModel->fou), "Stays unset on initialize to null");
+        $jsonModel->fou = 6.9;
+        self::assertSame(6.9, $jsonModel->fou, "Float is unchanged");
+        $jsonModel->fou = '6';
+        self::assertSame(6.0, $jsonModel->fou, "String is cast");
+        $jsonModel->fou = 9;
+        self::assertSame(9.0, $jsonModel->fou, "int is cast");
+        self::assertStringContainsString('"fou":9', $jsonModel->toJson());
+        $jsonModel->fou = null;
+        self::assertFalse(isset($jsonModel->fou), "Set to null unsets attribute");
+        self::assertStringNotContainsString('fou', $jsonModel->toJson());
+    }
+
+    public function testCastStringOrUnset(): void
+    {
+        $jsonModel = new class extends JsonModel{
+            protected $casts = [
+                'sou' => CastStringOrUnset::class
+            ];
+        };
+
+        self::assertFalse(isset($jsonModel->sou), "Initializes unset");
+        $jsonModel->sou = null;
+        self::assertFalse(isset($jsonModel->sou), "Stays unset on initialize to null");
+        $jsonModel->sou = 'happy happy';
+        self::assertSame('happy happy', $jsonModel->sou, "String is unchanged");
+        $jsonModel->sou = 6;
+        self::assertSame('6', $jsonModel->sou, "int is cast");
+        $jsonModel->sou = false;
+        self::assertSame('', $jsonModel->sou, "bool is cast");
+        self::assertStringContainsString('"sou":""', $jsonModel->toJson());
+        $jsonModel->sou = null;
+        self::assertFalse(isset($jsonModel->sou), "Set to null unsets attribute");
+        self::assertStringNotContainsString('sou', $jsonModel->toJson());
+    }
+
+    public function testCastNonEmptyStringOrUnset(): void
+    {
+        $jsonModel = new class extends JsonModel{
+            protected $casts = [
+                'sou' => CastNonEmptyStringOrUnset::class
+            ];
+        };
+
+        self::assertFalse(isset($jsonModel->sou), "Initializes unset");
+        $jsonModel->sou = null;
+        self::assertFalse(isset($jsonModel->sou), "Stays unset on initialize to null");
+        $jsonModel->sou = 'happy happy';
+        self::assertSame('happy happy', $jsonModel->sou, "String is unchanged");
+
+        $jsonModel->sou = '';
+        self::assertFalse(isset($jsonModel->sou), "Set to empty string unsets attribute");
+        self::assertStringNotContainsString('sou', $jsonModel->toJson());
+
+        $jsonModel->sou = 6;
+        self::assertSame('6', $jsonModel->sou, "int is cast");
+        self::assertStringContainsString('"sou":"6"', $jsonModel->toJson());
+
+        $jsonModel->sou = null;
+        self::assertFalse(isset($jsonModel->sou), "Set to null unsets attribute");
+        self::assertStringNotContainsString('sou', $jsonModel->toJson());
     }
 }
 
