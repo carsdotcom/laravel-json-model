@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Carsdotcom\LaravelJsonModel;
 
 use ArrayAccess;
+use Closure;
 use Carsdotcom\JsonSchemaValidation\Exceptions\JsonSchemaValidationException;
 use Carsdotcom\JsonSchemaValidation\Helpers\FriendlyClassName;
 use Carsdotcom\JsonSchemaValidation\Traits\ValidatesWithJsonSchema;
@@ -245,6 +246,13 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     protected static $booted = [];
 
     /**
+     * The callbacks that should be executed after the model has booted.
+     *
+     * @var array
+     */
+    protected static $bootedCallbacks = [];
+
+    /**
      * Check if the model needs to be booted and if so, do it.
      *
      * @return void
@@ -286,6 +294,19 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
                 forward_static_call([$class, $method]);
             }
         }
+    }
+
+    /**
+     * Register a closure to be executed after the model has booted.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    protected static function whenBooted(Closure $callback)
+    {
+        static::$bootedCallbacks[static::class] ??= [];
+
+        static::$bootedCallbacks[static::class][] = $callback;
     }
 
     /**
