@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Carsdotcom\LaravelJsonModel;
 
 use ArrayAccess;
+use Closure;
 use Carsdotcom\JsonSchemaValidation\Exceptions\JsonSchemaValidationException;
 use Carsdotcom\JsonSchemaValidation\Helpers\FriendlyClassName;
 use Carsdotcom\JsonSchemaValidation\Traits\ValidatesWithJsonSchema;
