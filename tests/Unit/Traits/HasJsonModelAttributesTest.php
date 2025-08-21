@@ -15,6 +15,7 @@ use InvalidArgumentException;
 use Tests\BaseTestCase;
 use Tests\MockClasses\ConcreteJsonModel;
 use Tests\MockClasses\ConcreteNullableJsonModel;
+use Tests\MockClasses\EventedModelWithJsonAttributes;
 
 /**
  * Class HasJsonModelAttributes
@@ -423,5 +424,24 @@ class HasJsonModelAttributesTest extends BaseTestCase
         self::assertFalse(isset($model->jsonModel));
         self::assertFalse($model->jsonModel->a ?? false);
         self::assertFalse($model->jsonModel->other ?? false);
+    }
+
+    public function testAttributeIsResetByRefresh()
+    {
+        $model = mock(EventedModelWithJsonAttributes::class)->makePartial()->shouldAllowMockingProtectedMethods();
+        // We're mocking the guts of Model::refresh to not actually require a database
+        $model->shouldReceive('setKeysForSelectQuery')->once()->andReturnSelf();
+        $model->shouldReceive('useWritePdo')->andReturnSelf();
+        $model->shouldReceive('firstOrFail')->andReturn((object)['attributes' => ['thing' => ['a' => "aneurysm"]]]);
+
+        $model->thing->a = "Apple";
+        self::assertSame("Apple", $model->thing->a);
+
+        // You have to tell the model it exists (on disk) or refresh doesn't do anything.
+        $model->exists = true;
+        // The change wasn't saved, the model reverts to "disk"
+        $model->refresh();
+        self::assertEmpty(getProperty($model, 'jsonModelAttributeCache'));
+        self::assertSame('aneurysm', $model->thing->a);
     }
 }
