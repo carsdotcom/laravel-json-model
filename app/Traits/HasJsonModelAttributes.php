@@ -355,4 +355,14 @@ trait HasJsonModelAttributes
     {
         return collect($this->jsonModelAttributeCache)->every->isEmpty() && parent::isEmpty();
     }
+
+    /**
+     * The Laravel method ->refresh tries to reuse the object reference while reloading data from disk.
+     * Reload the new cache this attribute introduces, too.
+     */
+    public function refresh(): static
+    {
+        $this->emptyJsonModelAttributeCache();
+        return parent::refresh();
+    }
 }
