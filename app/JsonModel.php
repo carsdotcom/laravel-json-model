@@ -458,7 +458,7 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
      * so if you have validation states where two attributes have to agree, choose `update` instead.
      * @return bool was save successful?
      */
-    public function safeUpdateRecursive(array $attributes, bool $isRootOfChange = true, array &$caughtExceptions = null): bool
+    public function safeUpdateRecursive(array $attributes, bool $isRootOfChange = true, ?array &$caughtExceptions = null): bool
     {
         if ($caughtExceptions === null) {
             $caughtExceptions = [];
