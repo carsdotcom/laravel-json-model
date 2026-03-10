@@ -47,7 +47,7 @@ class CollectionOfJsonModels extends Collection implements CanValidate
      * @param string $itemClass
      * @return CollectionOfJsonModels
      */
-    public function setType(string $itemClass = null): self
+    public function setType(?string $itemClass = null): self
     {
         if (!is_a($itemClass, JsonModel::class, true)) {
             throw new \DomainException('CollectionOfJsonModels type must be a descendent of JsonModel');
@@ -61,7 +61,7 @@ class CollectionOfJsonModels extends Collection implements CanValidate
      * @param string|null $key
      * @return CollectionOfJsonModels
      */
-    public function setPrimaryKey(string $key = null): self
+    public function setPrimaryKey(?string $key = null): self
     {
         $this->primaryKey = $key;
         return $this;
@@ -202,7 +202,7 @@ class CollectionOfJsonModels extends Collection implements CanValidate
      * @throws JsonSchemaValidationException   if data is invalid
      */
     public function validateOrThrow(
-        string $exceptionMessage = null,
+        ?string $exceptionMessage = null,
         int $failureHttpStatusCode = Response::HTTP_BAD_REQUEST,
     ): bool {
         if (!$this->itemClass) {
