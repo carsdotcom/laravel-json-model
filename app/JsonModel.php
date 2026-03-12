@@ -32,7 +32,6 @@ use Carsdotcom\LaravelJsonModel\Traits\HasLinkedData;
 use Illuminate\Contracts\Support\Jsonable;
 use Illuminate\Database\Eloquent\Concerns\HasAttributes;
 use Illuminate\Database\Eloquent\Concerns\HasEvents;
-use Illuminate\Database\Eloquent\Concerns\HasRelationships;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HidesAttributes;
 use Illuminate\Database\Eloquent\JsonEncodingException;
@@ -50,7 +49,6 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     use HasTimestamps;
     use HasEvents;
     use HasLinkedData;
-    use HasRelationships;
     use HidesAttributes;
     use ValidatesWithJsonSchema;
 
@@ -123,6 +121,50 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     public function getIncrementing(): bool
     {
         return false;
+    }
+
+    /*
+     * ==== Stubs for HasRelationships methods called by HasAttributes.
+     *
+     * HasAttributes::isRelation() calls $this->relationResolver() and $this->relationLoaded(),
+     * and HasAttributes::getRelationshipFromMethod() calls $this->setRelation(). JsonModel does
+     * not support Eloquent relationships, so these are all no-ops / return-false stubs.
+     * The $relations property is read directly by HasAttributes::getRelationsFromMethods().
+     */
+
+    /**
+     * Required by HasAttributes::getArrayableRelations(), which reads this property directly
+     * (not via a method) on every attributesToArray() call. Must be declared as an empty array —
+     * JsonModel never loads Eloquent relations, so it will always stay empty.
+     *
+     * @var array<string, mixed>
+     */
+    protected $relations = [];
+
+    /**
+     * Look up a dynamically-registered relation resolver. JsonModel never registers any.
+     */
+    public function relationResolver(string $class, string $key): mixed
+    {
+        return null;
+    }
+
+    /**
+     * Determine if a relation is loaded. JsonModel never loads Eloquent relations.
+     */
+    public function relationLoaded(string $key): bool
+    {
+        return false;
+    }
+
+    /**
+     * Store a loaded relation. JsonModel never loads Eloquent relations, so this is a no-op.
+     *
+     * @return $this
+     */
+    public function setRelation(string $relation, mixed $value): static
+    {
+        return $this;
     }
 
     /*
@@ -215,7 +257,7 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
      */
     public function offsetUnset(mixed $offset): void
     {
-        unset($this->attributes[$offset], $this->relations[$offset]);
+        unset($this->attributes[$offset]);
     }
 
     // JsonModels don't support preventAccessingMissingAttributes yet
