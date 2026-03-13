@@ -1,0 +1,9 @@
+parameters:
+    ignoreErrors:
+        # JsonModel intentionally uses HasEvents without extending Eloquent\Model.
+        # HasEvents requires Model only for its dispatcher infrastructure, which JsonModel
+        # provides directly (static $dispatcher, bootIfNotBooted, etc.).
+        -
+            message: '#Trait Illuminate\\Database\\Eloquent\\Concerns\\HasEvents requires using class to extend Illuminate\\Database\\Eloquent\\Model#'
+            identifier: class.missingExtends
+            reportUnmatched: false

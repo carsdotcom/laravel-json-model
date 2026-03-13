@@ -38,6 +38,13 @@
         "preferred-install": "dist",
         "sort-packages": true
     },
+    "extra": {
+        "phpstan": {
+            "includes": [
+                "extension.neon"
+            ]
+        }
+    },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "scripts": {
