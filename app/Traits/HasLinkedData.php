@@ -27,7 +27,7 @@ trait HasLinkedData
      * @param  string|null    $key
      * @return self (for chaining)
      */
-    public function link($model, string $attribute, string $key = null): self
+    public function link($model, string $attribute, ?string $key = null): self
     {
         $this->upstream_model = $model;
         $this->upstream_attribute = $attribute;
