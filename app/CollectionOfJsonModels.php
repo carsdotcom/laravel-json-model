@@ -20,8 +20,10 @@ use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Class CollectionOfJsonModels
- * @package Carsdotcom\LaravelJsonModel
+ * @template TKey of array-key
+ * @template TValue of JsonModel
+ * @extends Collection<TKey, TValue>
+ * @implements ArrayAccess<TKey, TValue>
  */
 class CollectionOfJsonModels extends Collection implements CanValidate
 {
