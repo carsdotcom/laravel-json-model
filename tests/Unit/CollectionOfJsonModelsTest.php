@@ -494,6 +494,28 @@ class CollectionOfJsonModelsTest extends BaseTestCase
         self::assertSame($valid, $collection->first());
     }
 
+    public function testExcludeInvalidClosesGapsAndRelinksSurvivors(): void
+    {
+        [$model, $collection] = $this->modelAndCollectionOfVehicles();
+
+        $first = Vehicle::factory()->make(['vin' => '11111111111111111']);
+        $middle = Vehicle::factory()->make(['vin' => '22222222222222222']);
+        $last = Vehicle::factory()->make(['vin' => '33333333333333333']);
+        $collection->push($first)->push($middle)->push($last);
+        $middle->vin = 'notavin'; // now invalid, and it's in the middle, not the end
+
+        $collection->excludeInvalid();
+
+        // Survivors are reindexed to contiguous keys [0, 1], not left as [0, 2]
+        self::assertSame([0, 1], array_keys($collection->all()));
+        self::assertSame($first, $collection[0]);
+        self::assertSame($last, $collection[1]);
+
+        // $last moved from position 2 to position 1: its own link path must be
+        // updated to match, or saving it directly would write to the wrong slot.
+        self::assertSame('1', getProperty($last, 'upstream_key'));
+    }
+
     public function testExcludeInvalidKeepsPrimaryKeyIndexing(): void
     {
         $collection = new CollectionOfJsonModels();
