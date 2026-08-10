@@ -477,6 +477,86 @@ class CollectionOfJsonModelsTest extends BaseTestCase
         self::assertSame(0, $second->created_fired);
     }
 
+    public function testExcludeInvalidRemovesFailingItemsAndReturnsSelf(): void
+    {
+        $collection = new CollectionOfJsonModels();
+        $collection->setType(Vehicle::class);
+
+        $valid = Vehicle::factory()->make();
+        $collection->push($valid);
+        $collection->push(Vehicle::factory()->make());
+        $collection[1]->vin = 'notavin'; // now invalid
+
+        $returned = $collection->excludeInvalid();
+
+        self::assertSame($collection, $returned, 'excludeInvalid mutates and returns self');
+        self::assertCount(1, $collection);
+        self::assertSame($valid, $collection->first());
+    }
+
+    public function testExcludeInvalidClosesGapsAndRelinksSurvivors(): void
+    {
+        [$model, $collection] = $this->modelAndCollectionOfVehicles();
+
+        $collection->push(Vehicle::factory()->make(['vin' => '11111111111111111']));
+        $collection->push(Vehicle::factory()->make(['vin' => '22222222222222222']));
+        $collection->push(Vehicle::factory()->make(['vin' => '33333333333333333']));
+        $collection[1]->vin = 'notavin'; // invalidate the middle item, not the last one
+
+        $collection->excludeInvalid();
+
+        // Survivors are reindexed to contiguous keys [0, 1], not left as [0, 2]
+        self::assertSame([0, 1], array_keys($collection->all()));
+        self::assertSame('11111111111111111', $collection[0]->vin);
+        self::assertSame('33333333333333333', $collection[1]->vin);
+
+        // The survivor that moved (was at position 2) must have had its link path
+        // updated to match its new position, or saving it directly would write to
+        // the wrong slot.
+        self::assertSame('1', getProperty($collection[1], 'upstream_key'));
+    }
+
+    public function testExcludeInvalidKeepsPrimaryKeyIndexing(): void
+    {
+        $collection = new CollectionOfJsonModels();
+        $collection->setType(Vehicle::class)->setPrimaryKey('vin');
+
+        $valid = Vehicle::factory()->make();
+        $collection->push($valid);
+
+        $invalid = Vehicle::factory()->make(['vin' => '22222222222222222']);
+        $collection->push($invalid);
+        $collection[$invalid->vin]->vin = 'notavin';
+
+        $collection->excludeInvalid();
+
+        self::assertCount(1, $collection);
+        self::assertArrayHasKey($valid->vin, $collection);
+        self::assertArrayNotHasKey('22222222222222222', $collection);
+    }
+
+    public function testExcludeInvalidOnAllValidItemsKeepsEverything(): void
+    {
+        $collection = new CollectionOfJsonModels();
+        $collection->setType(Vehicle::class);
+        $collection->push(Vehicle::factory()->make());
+        $collection->push(Vehicle::factory()->make(['vin' => '22222222222222222']));
+
+        $collection->excludeInvalid();
+
+        self::assertCount(2, $collection);
+    }
+
+    public function testExcludeInvalidOnEmptyCollectionIsANoop(): void
+    {
+        $collection = new CollectionOfJsonModels();
+        $collection->setType(Vehicle::class);
+
+        $collection->excludeInvalid();
+
+        self::assertCount(0, $collection);
+    }
+
     public function testFillCastsToCollectionType(): void
     {
         $collection = new CollectionOfJsonModels();

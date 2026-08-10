@@ -292,6 +292,26 @@ class CollectionOfJsonModels extends Collection implements CanValidate
     }
 
     /**
+     * Remove every item that fails its own ->validate().
+     * Unlike most Collection methods (e.g. ->reject), this MUTATES the collection in place,
+     * instead of returning a new one. That's deliberate: it lets you build a collection from
+     * raw/untrusted data and clean it up in one chained call, e.g. `(new
+     * CollectionOfJsonModels())->setType(Foo::class)->fill($rawItems)->excludeInvalid()`.
+     * @return CollectionOfJsonModels self, for chaining
+     */
+    public function excludeInvalid(): self
+    {
+        $items = array_filter($this->items, fn (JsonModel $item) => $item->validate());
+
+        // Non-primaryKey collections are keyed by position, so close any gaps left by removed items.
+        // primaryKey-keyed collections are already unique and don't need reindexing.
+        $this->items = $this->primaryKey ? $items : array_values($items);
+        $this->reindexItemLinks();
+
+        return $this;
+    }
+
+    /**
      * If you try to buildExpandedObject a CollectionOfJsonModels,
      * make sure the children support it,
      * then expand all the children with the requested attributes.

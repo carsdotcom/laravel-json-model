@@ -627,6 +627,21 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     }
 
     /**
+     * Non-throwing version of validateOrThrow().
+     * Use this when you just need a yes/no answer, e.g. to filter a
+     * CollectionOfJsonModels with ->excludeInvalid().
+     * @return bool   Does the current data conform to SCHEMA?
+     */
+    public function validate(): bool
+    {
+        try {
+            return $this->validateOrThrow();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
      * Runs any pre-save events. This is basically a visibility hack,
      * so we can run the protected model events (implemented by HasEvents)
      * from outside the model (esp from CollectionOfJsonModels and HasJsonModelAttributes)
