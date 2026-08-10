@@ -477,6 +477,64 @@ class CollectionOfJsonModelsTest extends BaseTestCase
         self::assertSame(0, $second->created_fired);
     }
 
+    public function testExcludeInvalidRemovesFailingItemsAndReturnsSelf(): void
+    {
+        $collection = new CollectionOfJsonModels();
+        $collection->setType(Vehicle::class);
+
+        $valid = Vehicle::factory()->make();
+        $collection->push($valid);
+        $collection->push(Vehicle::factory()->make());
+        $collection[1]->vin = 'notavin'; // now invalid
+
+        $returned = $collection->excludeInvalid();
+
+        self::assertSame($collection, $returned, 'excludeInvalid mutates and returns self');
+        self::assertCount(1, $collection);
+        self::assertSame($valid, $collection->first());
+    }
+
+    public function testExcludeInvalidKeepsPrimaryKeyIndexing(): void
+    {
+        $collection = new CollectionOfJsonModels();
+        $collection->setType(Vehicle::class)->setPrimaryKey('vin');
+
+        $valid = Vehicle::factory()->make();
+        $collection->push($valid);
+
+        $invalid = Vehicle::factory()->make(['vin' => '22222222222222222']);
+        $collection->push($invalid);
+        $collection[$invalid->vin]->vin = 'notavin';
+
+        $collection->excludeInvalid();
+
+        self::assertCount(1, $collection);
+        self::assertArrayHasKey($valid->vin, $collection);
+        self::assertArrayNotHasKey('22222222222222222', $collection);
+    }
+
+    public function testExcludeInvalidOnAllValidItemsKeepsEverything(): void
+    {
+        $collection = new CollectionOfJsonModels();
+        $collection->setType(Vehicle::class);
+        $collection->push(Vehicle::factory()->make());
+        $collection->push(Vehicle::factory()->make(['vin' => '22222222222222222']));
+
+        $collection->excludeInvalid();
+
+        self::assertCount(2, $collection);
+    }
+
+    public function testExcludeInvalidOnEmptyCollectionIsANoop(): void
+    {
+        $collection = new CollectionOfJsonModels();
+        $collection->setType(Vehicle::class);
+
+        $collection->excludeInvalid();
+
+        self::assertCount(0, $collection);
+    }
+
     public function testFillCastsToCollectionType(): void
     {
         $collection = new CollectionOfJsonModels();

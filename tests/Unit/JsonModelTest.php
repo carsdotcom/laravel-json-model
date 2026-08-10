@@ -419,6 +419,25 @@ class JsonModelTest extends BaseTestCase
         self::assertTrue($jsonModel->validateOrThrow());
     }
 
+    public function testValidateReturnsTrueForValidModel(): void
+    {
+        $jsonModel = new class (['vin' => '11111111111111111', 'make' => 'DeLorean', 'model' => 'DMC-12']) extends
+            JsonModel
+        {
+            public const SCHEMA = 'https://schemas.dealerinspire.com/online-shopper/vehicle.json';
+        };
+        self::assertTrue($jsonModel->validate());
+    }
+
+    public function testValidateReturnsFalseInsteadOfThrowing(): void
+    {
+        $jsonModel = new class (['vin' => 'tooshort']) extends JsonModel
+        {
+            public const SCHEMA = 'https://schemas.dealerinspire.com/online-shopper/vehicle.json';
+        };
+        self::assertFalse($jsonModel->validate());
+    }
+
     public function testLinkedJsonModelValidationHaltsSave(): void
     {
         [$model, $jsonmodel] = $this->mockLinkedValidatedJsonModel();
