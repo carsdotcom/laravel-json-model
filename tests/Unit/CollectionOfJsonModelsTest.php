@@ -502,6 +502,7 @@ class CollectionOfJsonModelsTest extends BaseTestCase
         $middle = Vehicle::factory()->make(['vin' => '22222222222222222']);
         $last = Vehicle::factory()->make(['vin' => '33333333333333333']);
         $collection->push($first)->push($middle)->push($last);
+        self::assertSame([0, 1, 2], array_keys($collection->all()), 'sanity check: $middle starts at key 1, not the end');
         $middle->vin = 'notavin'; // now invalid, and it's in the middle, not the end
 
         $collection->excludeInvalid();
