@@ -7,3 +7,10 @@ parameters:
             message: '#Trait Illuminate\\Database\\Eloquent\\Concerns\\HasEvents requires using class to extend Illuminate\\Database\\Eloquent\\Model#'
             identifier: class.missingExtends
             reportUnmatched: false
+        # JsonModel intentionally uses HasAttributes without extending Eloquent\Model.
+        # Larastan 3.11+ stubs add @phpstan-require-extends Model to HasAttributes.
+        # JsonModel provides the infrastructure that HasAttributes expects.
+        -
+            message: '#Trait Illuminate\\Database\\Eloquent\\Concerns\\HasAttributes requires using class to extend Illuminate\\Database\\Eloquent\\Model#'
+            identifier: class.missingExtends
+            reportUnmatched: false
