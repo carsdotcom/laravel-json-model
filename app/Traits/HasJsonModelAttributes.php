@@ -212,6 +212,25 @@ trait HasJsonModelAttributes
     }
 
     /**
+     * Like toArray(), but cached Json Model Attributes give their storage shape. toArray() holds the live
+     * collection, which serializes as a numeric list and would lose the primary-key keys on the way to disk.
+     * @return array|null|stdClass
+     */
+    public function toStorageArray()
+    {
+        $array = $this->toArray();
+        if (is_array($array)) {
+            foreach ($this->jsonModelAttributeCache as $key => $child) {
+                if (array_key_exists($key, $array) && method_exists($child, 'toStorageArray')) {
+                    $array[$key] = $child->toStorageArray();
+                }
+            }
+        }
+
+        return $array;
+    }
+
+    /**
      * Functions like eager loading a Laravel Relationship.
      * Forget all currently cached Json Model Attributes,
      * then hydrate all the models requested.
