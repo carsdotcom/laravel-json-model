@@ -20,6 +20,14 @@ use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
+ * A list of JsonModels that can be linked to, and saved into, a larger whole.
+ *
+ * With a primary key the collection is keyed by it in memory and over a link, but serializes as a
+ * numeric list for the wire. Storing it keyed gives a merge that compares two writers' copies of the
+ * larger whole a stable identity per item, so concurrent additions and changes survive.
+ * Without a primary key, items are stored as a numeric list, and a merge treats the same index in
+ * two copies as the same item.
+ *
  * @template TKey of array-key
  * @template TValue of JsonModel
  * @extends Collection<TKey, TValue>
@@ -32,7 +40,7 @@ class CollectionOfJsonModels extends Collection implements CanValidate
     /** @var string
      * When defining a HasJsonModelAttributes $jsonModelAttributes config
      * Using this constant in the fourth position marks an attribute as
-     * a CollectionOfJsonModels
+     * a CollectionOfJsonModels. An optional fifth position names its primary key.
      */
     public const IS_A = true;
     public const NOT_A = false;
@@ -40,7 +48,13 @@ class CollectionOfJsonModels extends Collection implements CanValidate
     /** @var string Class name that each element will be hydrated as during ->fresh() */
     protected $itemClass = '';
 
-    /** @var null|string   Optional name of a primary key. If present, you can use ->find and ->push will overwrite existing */
+    /**
+     * @var null|string   Optional name of a primary key. If present:
+     *     - items are keyed by it, so ->find works and ->push throws UniqueException on a duplicate
+     *     - toStorageArray() keys the stored data by it, which makes the collection safe to merge
+     *     - data stored as a numeric list is re-keyed by ->fill() on read, and stored keyed on the next write
+     *     The key must be unique and present on every item. ->fill() lets a later duplicate replace an earlier one.
+     */
     protected $primaryKey = null;
     /**
      * This call is mandatory for any real use of this class
@@ -229,8 +243,8 @@ class CollectionOfJsonModels extends Collection implements CanValidate
 
     /**
      * Convert the object into something JSON serializable.
-     * When we serialize as numeric for the wire,
-     * But when we're going to disk we serialize it as an object keyed by primary key
+     * This is the wire shape, always a numeric list.
+     * The shape that goes over a link to disk is toStorageArray(), keyed by primary key
      *
      * @return array
      */
@@ -241,6 +255,19 @@ class CollectionOfJsonModels extends Collection implements CanValidate
         $serializedNumeric = parent::jsonSerialize();
         $this->items = $items_was;
         return $serializedNumeric;
+    }
+
+    /**
+     * The shape of this collection when it is written over a link: keyed by primary key when it has one.
+     * Unlike jsonSerialize(), this is not what goes over the wire.
+     * @return array
+     */
+    public function toStorageArray(): array
+    {
+        return array_map(
+            fn($item) => $item instanceof JsonModel ? $item->toStorageArray() : $item->toArray(),
+            $this->items,
+        );
     }
 
     /**
