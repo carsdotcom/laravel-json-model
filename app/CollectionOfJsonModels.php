@@ -60,11 +60,22 @@ class CollectionOfJsonModels extends Collection implements CanValidate
     }
 
     /**
+     * Set the primary key. A null key means "unspecified" and changes nothing.
+     * A collection class that declares its own $primaryKey keeps it, and refuses a different one.
      * @param string|null $key
      * @return CollectionOfJsonModels
+     * @throws \DomainException if a different primary key is already set
      */
     public function setPrimaryKey(?string $key = null): self
     {
+        if ($key === null) {
+            return $this;
+        }
+        if ($this->primaryKey !== null && $this->primaryKey !== $key) {
+            throw new \DomainException(
+                static::class . " already has primary key '{$this->primaryKey}', can't change it to '{$key}'.",
+            );
+        }
         $this->primaryKey = $key;
         return $this;
     }

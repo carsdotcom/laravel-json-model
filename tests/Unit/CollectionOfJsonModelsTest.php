@@ -13,6 +13,7 @@ use Carsdotcom\LaravelJsonModel\JsonModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Tests\BaseTestCase;
+use Tests\MockClasses\CollectionKeyedById;
 use Tests\MockClasses\EventedJsonModel;
 use Tests\MockClasses\EventedModelWithJsonAttributes;
 use Tests\Mocks\Models\Vehicle;
@@ -568,6 +569,44 @@ class CollectionOfJsonModelsTest extends BaseTestCase
         });
         self::assertNotNull($collection->find('99999999999999999'));
         self::assertNotNull($collection->find('88888888888888888'));
+    }
+
+    public function testSetPrimaryKeyOnACollectionWithoutOneJustSetsIt(): void
+    {
+        $collection = (new CollectionOfJsonModels())->setType(JsonModelVehicle::class);
+
+        $collection->setPrimaryKey('vin');
+
+        self::assertSame('vin', getProperty($collection, 'primaryKey'));
+    }
+
+    public function testSetPrimaryKeyToTheSameKeyAgainIsFine(): void
+    {
+        $collection = new CollectionKeyedById();
+
+        $collection->setPrimaryKey('id');
+
+        self::assertSame('id', getProperty($collection, 'primaryKey'));
+    }
+
+    public function testSetPrimaryKeyToADifferentKeyThrows(): void
+    {
+        $collection = new CollectionKeyedById();
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage(
+            CollectionKeyedById::class . " already has primary key 'id', can't change it to 'vin'.",
+        );
+        $collection->setPrimaryKey('vin');
+    }
+
+    public function testSetPrimaryKeyToNullKeepsTheExistingKey(): void
+    {
+        $collection = new CollectionKeyedById();
+
+        $collection->setPrimaryKey(null);
+
+        self::assertSame('id', getProperty($collection, 'primaryKey'));
     }
 }
 
