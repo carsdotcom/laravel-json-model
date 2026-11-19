@@ -86,7 +86,7 @@ trait HasLinkedData
             $this->validateOrThrow();
         }
 
-        $new_value = $this->toArray();
+        $new_value = method_exists($this, 'toStorageArray') ? $this->toStorageArray() : $this->toArray();
         if ($this->upstream_key) {
             $whole_attribute = $this->upstream_model[$this->upstream_attribute];
             // The return value of array_set() is not "old with changes" it's way, way dumber than that
