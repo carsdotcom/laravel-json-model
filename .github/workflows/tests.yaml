@@ -6,10 +6,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    # Matrix policy: test only versions that still get security fixes.
+    #   Laravel: https://laravelversions.com/en
+    #   PHP:     https://www.php.net/supported-versions.php
+    # Laravel 13 needs PHP 8.3+, so PHP 8.2 + Laravel 13 is excluded.
+    # Last reviewed: 2026-11-20
     strategy:
+      fail-fast: false
       matrix:
         php: ['8.2', '8.3', '8.4', '8.5']
-        laravel: [10.*, 11.*, 12.*, 13.*]
+        laravel: [12.*, 13.*]
         exclude:
           - php: '8.2'
             laravel: '13.*'
