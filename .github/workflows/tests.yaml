@@ -6,8 +6,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # Laravel 10/11 and PHP 8.1 are EOL and Composer blocks them over security advisories.
-    # Review against https://laravelversions.com/en and https://www.php.net/supported-versions.php
+    # Matrix policy: test only versions that still get security fixes.
+    #   Laravel: https://laravelversions.com/en
+    #   PHP:     https://www.php.net/supported-versions.php
+    # Laravel 13 needs PHP 8.3+, so PHP 8.2 + Laravel 13 is excluded.
+    # Last reviewed: 2026-11-20
     strategy:
       fail-fast: false
       matrix:
