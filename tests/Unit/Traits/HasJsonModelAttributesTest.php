@@ -388,33 +388,22 @@ class HasJsonModelAttributesTest extends BaseTestCase
         $model->jsons->push(['id'=>1, 'data'=>'second']);
     }
 
-    private function modelWithItemsInACollectionClassKeyedById(?string $configKey): Model
+    public function testCollectionClassKeepsItsOwnKeyWhenTheConfigDoesNotNameOne()
     {
-        return new class(['raw' => [['id' => 'a']]], $configKey) extends Model {
+        $model = new class(['raw' => [['id' => 'a']]]) extends Model {
             use HasJsonModelAttributes;
             protected $guarded = [];
             protected $casts = ['raw' => 'json'];
-            protected $jsonModelAttributes = [];
-
-            public function __construct(array $attributes, ?string $configKey)
-            {
-                $this->jsonModelAttributes = [
-                    'jsons' => [
-                        \Tests\MockClasses\ItemInCollectionKeyedById::class,
-                        'raw',
-                        null,
-                        CollectionOfJsonModels::IS_A,
-                        $configKey,
-                    ],
-                ];
-                parent::__construct($attributes);
-            }
+            protected $jsonModelAttributes = [
+                'jsons' => [
+                    \Tests\MockClasses\ItemInCollectionKeyedById::class,
+                    'raw',
+                    null,
+                    CollectionOfJsonModels::IS_A,
+                    null,
+                ],
+            ];
         };
-    }
-
-    public function testCollectionClassKeepsItsOwnKeyWhenTheConfigDoesNotNameOne()
-    {
-        $model = $this->modelWithItemsInACollectionClassKeyedById(null);
 
         self::assertSame('id', getProperty($model->jsons, 'primaryKey'));
         self::assertArrayHasKey('a', $model->jsons);
@@ -422,14 +411,40 @@ class HasJsonModelAttributesTest extends BaseTestCase
 
     public function testConfigKeyThatMatchesTheCollectionClassKeyIsFine()
     {
-        $model = $this->modelWithItemsInACollectionClassKeyedById('id');
+        $model = new class(['raw' => [['id' => 'a']]]) extends Model {
+            use HasJsonModelAttributes;
+            protected $guarded = [];
+            protected $casts = ['raw' => 'json'];
+            protected $jsonModelAttributes = [
+                'jsons' => [
+                    \Tests\MockClasses\ItemInCollectionKeyedById::class,
+                    'raw',
+                    null,
+                    CollectionOfJsonModels::IS_A,
+                    'id',
+                ],
+            ];
+        };
 
         self::assertSame('id', getProperty($model->jsons, 'primaryKey'));
     }
 
     public function testConfigKeyThatConflictsWithTheCollectionClassKeyThrowsOnHydration()
     {
-        $model = $this->modelWithItemsInACollectionClassKeyedById('vin');
+        $model = new class(['raw' => [['id' => 'a']]]) extends Model {
+            use HasJsonModelAttributes;
+            protected $guarded = [];
+            protected $casts = ['raw' => 'json'];
+            protected $jsonModelAttributes = [
+                'jsons' => [
+                    \Tests\MockClasses\ItemInCollectionKeyedById::class,
+                    'raw',
+                    null,
+                    CollectionOfJsonModels::IS_A,
+                    'vin',
+                ],
+            ];
+        };
 
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage("already has primary key 'id', can't change it to 'vin'.");
