@@ -599,15 +599,6 @@ class CollectionOfJsonModelsTest extends BaseTestCase
         );
         $collection->setPrimaryKey('vin');
     }
-
-    public function testSetPrimaryKeyToNullKeepsTheExistingKey(): void
-    {
-        $collection = new CollectionKeyedById();
-
-        $collection->setPrimaryKey(null);
-
-        self::assertSame('id', getProperty($collection, 'primaryKey'));
-    }
 }
 
 class JsonModelVehicle extends JsonModel

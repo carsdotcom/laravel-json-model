@@ -67,8 +67,10 @@ trait HasJsonModelAttributes
         if ($is_collection) {
             /** @var CollectionOfJsonModels $collection */
             $collection = (new $type())->newCollection();
+            if ($primary_key !== null) {
+                $collection->setPrimaryKey($primary_key);
+            }
             return $this->jsonModelAttributeCache[$key] = $collection
-                ->setPrimaryKey($primary_key)
                 ->link($this, $attribute, $attribute_key)
                 ->fresh();
         }
@@ -135,10 +137,11 @@ trait HasJsonModelAttributes
             $this->jsonModelAttributeCache[$key] = $value;
         } else {
             /** @var CollectionOfJsonModels $collection */
-            $collection = (new $type())
-                ->newCollection()
-                ->setPrimaryKey($primary_key)
-                ->link($this, $attribute, $attribute_key);
+            $collection = (new $type())->newCollection();
+            if ($primary_key !== null) {
+                $collection->setPrimaryKey($primary_key);
+            }
+            $collection->link($this, $attribute, $attribute_key);
             if (is_iterable($value)) {
                 foreach ($value as $each) {
                     // This has the side effect of casting children
