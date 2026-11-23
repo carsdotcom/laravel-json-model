@@ -607,6 +607,16 @@ abstract class JsonModel implements ArrayAccess, Jsonable, JsonSerializable, Can
     }
 
     /**
+     * The shape of this object when it is written over a link.
+     * Same as toArray() except that collections with a primary key are keyed by it, at any depth.
+     * @return array|null|object
+     */
+    public function toStorageArray()
+    {
+        return $this->toArray();
+    }
+
+    /**
      * Implement PHP's JsonSerializable contract
      */
     public function jsonSerialize(): object|array|null

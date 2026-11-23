@@ -16,6 +16,7 @@ use Tests\BaseTestCase;
 use Tests\MockClasses\ConcreteJsonModel;
 use Tests\MockClasses\ConcreteNullableJsonModel;
 use Tests\MockClasses\EventedModelWithJsonAttributes;
+use Tests\MockClasses\JsonModelWithKeyedItems;
 
 /**
  * Class HasJsonModelAttributes
@@ -443,5 +444,65 @@ class HasJsonModelAttributesTest extends BaseTestCase
         $model->refresh();
         self::assertEmpty(getProperty($model, 'jsonModelAttributeCache'));
         self::assertSame('aneurysm', $model->thing->a);
+    }
+
+    private function modelHoldingKeyedItems(array $attributes = []): Model
+    {
+        return new class($attributes) extends Model {
+            use HasJsonModelAttributes;
+            protected $guarded = [];
+            protected $casts = ['raw' => 'json'];
+            protected $jsonModelAttributes = [
+                'wrapper' => [JsonModelWithKeyedItems::class, 'raw', 'wrapper'],
+                'groups' => [JsonModelWithKeyedItems::class, 'raw', 'groups', CollectionOfJsonModels::IS_A, 'id'],
+            ];
+        };
+    }
+
+    public function testKeyedCollectionNestedInJsonModelIsStoredKeyedButSerializedNumeric()
+    {
+        $model = $this->modelHoldingKeyedItems();
+        $model->wrapper->items->push(['id' => 'a', 'data' => 'first']);
+        $model->wrapper->items->push(['id' => 'b', 'data' => 'second']);
+
+        $model->wrapper->setLinkedData();
+
+        $stored = json_decode($model->getAttributes()['raw'], true);
+        self::assertSame(['a', 'b'], array_keys($stored['wrapper']['items']));
+        self::assertSame('second', $stored['wrapper']['items']['b']['data']);
+
+        $wire = json_decode(json_encode($model->wrapper));
+        self::assertIsArray($wire->items);
+        self::assertSame('second', $wire->items[1]->data);
+    }
+
+    public function testNumericListStoredBeforeAKeyWasDeclaredReadsFineAndIsRekeyedByTheNextWrite()
+    {
+        $numeric = ['wrapper' => ['items' => [['id' => 'a', 'data' => 'first'], ['id' => 'b', 'data' => 'second']]]];
+        $model = $this->modelHoldingKeyedItems(['raw' => $numeric]);
+        $storedBefore = $model->getAttributes()['raw'];
+
+        self::assertSame(['a', 'b'], array_keys($model->wrapper->items->all()));
+        self::assertSame('second', $model->wrapper->items['b']->data);
+        self::assertSame($storedBefore, $model->getAttributes()['raw'], 'Reading writes nothing');
+
+        $model->wrapper->items->push(['id' => 'c', 'data' => 'third']);
+        $model->wrapper->setLinkedData();
+
+        $stored = json_decode($model->getAttributes()['raw'], true);
+        self::assertSame(['a', 'b', 'c'], array_keys($stored['wrapper']['items']));
+        self::assertSame('first', $stored['wrapper']['items']['a']['data']);
+    }
+
+    public function testKeyedCollectionNestedInAnItemOfAKeyedCollectionIsStoredKeyed()
+    {
+        $model = $this->modelHoldingKeyedItems();
+        $model->groups->push(['id' => 'g1', 'items' => [['id' => 'a'], ['id' => 'b']]]);
+
+        $model->groups->setLinkedData();
+
+        $stored = json_decode($model->getAttributes()['raw'], true);
+        self::assertSame(['g1'], array_keys($stored['groups']));
+        self::assertSame(['a', 'b'], array_keys($stored['groups']['g1']['items']));
     }
 }
