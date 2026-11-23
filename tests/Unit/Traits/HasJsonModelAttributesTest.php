@@ -388,6 +388,69 @@ class HasJsonModelAttributesTest extends BaseTestCase
         $model->jsons->push(['id'=>1, 'data'=>'second']);
     }
 
+    public function testCollectionClassKeepsItsOwnKeyWhenTheConfigDoesNotNameOne()
+    {
+        $model = new class(['raw' => [['id' => 'a']]]) extends Model {
+            use HasJsonModelAttributes;
+            protected $guarded = [];
+            protected $casts = ['raw' => 'json'];
+            protected $jsonModelAttributes = [
+                'jsons' => [
+                    \Tests\MockClasses\ItemInCollectionKeyedById::class,
+                    'raw',
+                    null,
+                    CollectionOfJsonModels::IS_A,
+                    null,
+                ],
+            ];
+        };
+
+        self::assertSame('id', getProperty($model->jsons, 'primaryKey'));
+        self::assertArrayHasKey('a', $model->jsons);
+    }
+
+    public function testConfigKeyThatMatchesTheCollectionClassKeyIsFine()
+    {
+        $model = new class(['raw' => [['id' => 'a']]]) extends Model {
+            use HasJsonModelAttributes;
+            protected $guarded = [];
+            protected $casts = ['raw' => 'json'];
+            protected $jsonModelAttributes = [
+                'jsons' => [
+                    \Tests\MockClasses\ItemInCollectionKeyedById::class,
+                    'raw',
+                    null,
+                    CollectionOfJsonModels::IS_A,
+                    'id',
+                ],
+            ];
+        };
+
+        self::assertSame('id', getProperty($model->jsons, 'primaryKey'));
+    }
+
+    public function testConfigKeyThatConflictsWithTheCollectionClassKeyThrowsOnHydration()
+    {
+        $model = new class(['raw' => [['id' => 'a']]]) extends Model {
+            use HasJsonModelAttributes;
+            protected $guarded = [];
+            protected $casts = ['raw' => 'json'];
+            protected $jsonModelAttributes = [
+                'jsons' => [
+                    \Tests\MockClasses\ItemInCollectionKeyedById::class,
+                    'raw',
+                    null,
+                    CollectionOfJsonModels::IS_A,
+                    'vin',
+                ],
+            ];
+        };
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage("already has primary key 'id', can't change it to 'vin'.");
+        $model->jsons;
+    }
+
     public function testJsonModelCollectionHydratesChildrenToClass()
     {
         $model = new class(['raw' => [['id'=>1]]]) extends Model {
